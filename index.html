@@ -7,9 +7,25 @@
     <style>
       /* Always set the map height explicitly to define the size of the div
        * element that contains the map. */
+			#wrapper {
+				position: relative;
+				height: 100%;
+			}
       #map {
         height: 100%;
       }
+			#debug{
+				min-height: 100px;
+				position: absolute;
+				top: 100px;
+				right: 100px;
+				background: red;
+				z-index: 99;
+				font-family: monospace;
+				padding-left: 1em;
+				padding-right: 1em;
+				font-size: 1em;
+			}
       /* Optional: Makes the sample page fill the window. */
       html, body {
         height: 100%;
@@ -19,31 +35,39 @@
     </style>
   </head>
   <body>
-    <div id="map"></div>
+		<div id="wrapper">
+			<div id="debug">
+				<p id="srcLatlng"></p>
+				<p id="destLatlng"></p>
+				<p id="diffLatlng"></p>
+				<p id="walkingDistance"></p>
+				<p id="walkingTime"></p>
+			</div>
+			<div id="map"></div>
+		</div>
     <script>
       var map;
 			var marker;
 			var distanceMatrixService;
-			var srcLatlng;
-			var destLatlng;
+			var sourceMarker;
+			var destMarker;
 			var measureLine;
 
 			function initMap() {
-				srcLatlng = {lat: 40.412156, lng: -74.032638};
-				destLatlng = {lat: 40.412156, lng: -74.030638};
+				srcLatlngInit = {lat: 40.412156, lng: -74.032638};
+				destLatlngInit = {lat: 40.412156, lng: -74.030638};
 				var defaultZoom = 14;
 
 				map = new google.maps.Map(document.getElementById('map'), {
-					center: srcLatlng,
+					center: srcLatlngInit,
 					zoom: defaultZoom
 				});
 
 				distanceMatrixService = new google.maps.DistanceMatrixService();
 
-				updateTime();
 
 				sourceMarker = new google.maps.Marker({
-					position: srcLatlng,
+					position: srcLatlngInit,
 					map: map,
 					title: 'Selected position',
 					label: 'A',
@@ -51,15 +75,17 @@
 				});
 
 				destMarker = new google.maps.Marker({
-					position: destLatlng,
+					position: destLatlngInit,
 					map: map,
 					title: 'Selected position',
 					label: 'B',
 					draggable: true
 				});
 
+				updateTime();
+
 				measureLine = new google.maps.Polyline({
-					path: [srcLatlng, destLatlng],
+					path: [sourceMarker.getPosition(), destMarker.getPosition()],
 					geodesic: true,
 					strokeColor: '#FF0000',
 					strokeOpacity: 1.0,
@@ -71,20 +97,17 @@
 				map.addListener('click', function(event) {
 					sourceMarker.setPosition(event.latLng);
 					map.panTo(sourceMarker.getPosition());
-					srcLatlng = sourceMarker.getPosition();
 					updateTime();
 					updateLine();
 				});
 
 				sourceMarker.addListener('dragend', function() {
 					map.panTo(sourceMarker.getPosition());
-					srcLatlng = sourceMarker.getPosition();
 					updateTime();
 					updateLine();
 				});
 
 				destMarker.addListener('dragend', function() {
-					destLatlng = destMarker.getPosition();
 					updateTime();
 					updateLine();
 				});
@@ -97,22 +120,28 @@
 			}
 
 			function updateLine() {
-				measureLine.setPath([srcLatlng, destLatlng]);
+				measureLine.setPath([sourceMarker.getPosition(), destMarker.getPosition()]);
 			}
 
 			function updateTime() {
 				distanceMatrixService.getDistanceMatrix({
-					origins: [srcLatlng],
-					destinations: [destLatlng],
+					origins: [sourceMarker.getPosition()],
+					destinations: [destMarker.getPosition()],
 					travelMode: 'WALKING'
 				}, drawTime);
 			}
 
 			function drawTime(response, status) {
 				response.rows[0].elements.forEach(function(element) {
-					console.log(element)
-					console.log("distance: " + element.distance.text + " duration: " + element.duration.text);
+					document.getElementById("srcLatlng").innerHTML = sourceMarker.getPosition().lat() + " " + sourceMarker.getPosition().lng();
+					document.getElementById("destLatlng").innerHTML = destMarker.getPosition().lat() + " " + destMarker.getPosition().lng();
+					document.getElementById("diffLatlng").innerHTML = ( destMarker.getPosition().lat() - sourceMarker.getPosition().lat() ) + " " + ( destMarker.getPosition().lng() - sourceMarker.getPosition().lng());
+					document.getElementById("walkingDistance").innerHTML = element.distance.text;
+					document.getElementById("walkingTime").innerHTML = element.duration.text;
 				});
+			}
+
+			function drawDebug() {
 			}
 
 		</script>
